@@ -15,9 +15,9 @@ class CloudinaryService {
     String folder = 'fashionmarket/products',
   }) async {
     try {
-      final cloudName = AppConfig.cloudinaryCloudName;
-      final apiKey = AppConfig.cloudinaryApiKey;
-      final apiSecret = AppConfig.cloudinaryApiSecret;
+      final cloudName = AppConfig.cloudinaryCloudName.trim();
+      final apiKey = AppConfig.cloudinaryApiKey.trim();
+      final apiSecret = AppConfig.cloudinaryApiSecret.trim();
 
       if (cloudName.isEmpty || apiKey.isEmpty || apiSecret.isEmpty) {
         print('Error: Cloudinary credentials not configured in .env');
@@ -26,11 +26,13 @@ class CloudinaryService {
 
       final timestamp = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
 
-      // Generar firma (como en tiendaOnline/src/pages/api/cloudinary-signature.ts)
-      final paramsToSign = 'folder=$folder&timestamp=$timestamp$apiSecret';
-      final signature = sha1.convert(utf8.encode(paramsToSign)).toString();
+      // Generar firma exactamente como en tiendaOnline/src/pages/api/cloudinary-signature.ts
+      // Solo timestamp en la firma; folder se envía aparte como parámetro unsigned
+      final stringToSign = 'folder=$folder&timestamp=$timestamp';
+      final signature = sha1.convert(utf8.encode('$stringToSign$apiSecret')).toString();
 
       final url = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
+      print('Cloudinary upload URL: $url (cloud_name length: ${cloudName.length})');
 
       final request = http.MultipartRequest('POST', url);
       request.fields['api_key'] = apiKey;

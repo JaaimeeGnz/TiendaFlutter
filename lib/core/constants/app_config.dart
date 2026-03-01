@@ -12,10 +12,11 @@ class AppConfig {
 
   // Cloudinary
   static String get cloudinaryCloudName =>
-      dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? '';
-  static String get cloudinaryApiKey => dotenv.env['CLOUDINARY_API_KEY'] ?? '';
+      (dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? '').trim();
+  static String get cloudinaryApiKey =>
+      (dotenv.env['CLOUDINARY_API_KEY'] ?? '').trim();
   static String get cloudinaryApiSecret =>
-      dotenv.env['CLOUDINARY_API_SECRET'] ?? '';
+      (dotenv.env['CLOUDINARY_API_SECRET'] ?? '').trim();
 
   // Brevo (Email)
   static String get brevoApiKey => dotenv.env['BREVO_API_KEY'] ?? '';
