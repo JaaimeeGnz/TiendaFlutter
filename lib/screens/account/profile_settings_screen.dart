@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/brevo_service.dart';
 import '../../services/cloudinary_service.dart';
 
 /// ProfileSettingsScreen - Pantalla para editar perfil del usuario
@@ -90,6 +91,15 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             backgroundColor: AppColors.success,
           ),
         );
+        // Enviar email de confirmación
+        final email = authProvider.user?.email;
+        if (email != null) {
+          BrevoService.sendProfileUpdatedEmail(
+            email: email,
+            changeType: 'photo',
+            userName: authProvider.user?.displayName,
+          );
+        }
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -135,6 +145,15 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             backgroundColor: AppColors.success,
           ),
         );
+        // Enviar email de confirmación
+        final email = authProvider.user?.email;
+        if (email != null) {
+          BrevoService.sendProfileUpdatedEmail(
+            email: email,
+            changeType: 'name',
+            userName: _nameController.text,
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -169,6 +188,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             content: Text('Email actualizado correctamente'),
             backgroundColor: AppColors.success,
           ),
+        );
+        // Enviar email de confirmación al nuevo email
+        BrevoService.sendProfileUpdatedEmail(
+          email: _emailController.text,
+          changeType: 'email',
+          userName: authProvider.user?.displayName,
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -230,6 +255,15 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             backgroundColor: AppColors.success,
           ),
         );
+        // Enviar email de confirmación
+        final email = authProvider.user?.email;
+        if (email != null) {
+          BrevoService.sendProfileUpdatedEmail(
+            email: email,
+            changeType: 'password',
+            userName: authProvider.user?.displayName,
+          );
+        }
         setState(() {
           _showPasswordForm = false;
           _currentPasswordController.clear();

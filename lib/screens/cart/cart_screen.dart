@@ -5,6 +5,7 @@ import '../../core/utils/format_utils.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/address_provider.dart';
+import '../../services/brevo_service.dart';
 import '../../services/stripe_service.dart';
 import '../../services/order_service.dart';
 
@@ -332,7 +333,17 @@ class _CartScreenState extends State<CartScreen> {
         return;
       }
 
-      // 3. Todo correcto: limpiar carrito y mostrar confirmación
+      // 3. Enviar email de confirmación de pedido
+      BrevoService.sendOrderConfirmationEmail(
+        email: email,
+        orderNumber: order.orderNumber,
+        totalCents: cartProvider.totalCents,
+        items: order.items,
+        customerName: authProvider.user?.displayName ?? authProvider.user?.username,
+        discountCents: cartProvider.hasDiscount ? cartProvider.discountCents : null,
+      );
+
+      // 4. Todo correcto: limpiar carrito y mostrar confirmación
       cartProvider.clearCart();
       _showPaymentSuccessDialog(order.orderNumber);
     } catch (e) {

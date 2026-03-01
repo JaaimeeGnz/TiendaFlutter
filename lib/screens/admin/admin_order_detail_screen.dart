@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/order.dart';
+import '../../services/brevo_service.dart';
 import '../../services/order_service.dart';
 
 /// AdminOrderDetailScreen - Detalle y gestión de pedido
@@ -45,6 +46,20 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
     try {
       await _orderService.updateOrderStatus(widget.orderId, newStatus);
       _order = _order?.copyWith(status: newStatus);
+
+      // Enviar email de cambio de estado al cliente
+      if (_order != null) {
+        final customerEmail = _order!.userEmail ?? '';
+        if (customerEmail.isNotEmpty) {
+          BrevoService.sendOrderStatusChangedEmail(
+            email: customerEmail,
+            orderNumber: _order!.orderNumber,
+            newStatus: newStatus,
+            customerName: customerEmail.split('@').first,
+            totalCents: _order!.totalCents,
+          );
+        }
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

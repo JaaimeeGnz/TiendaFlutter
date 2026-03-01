@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/order.dart';
+import '../../services/brevo_service.dart';
 import '../../services/order_service.dart';
 import '../../services/invoice_service.dart';
 import 'package:provider/provider.dart';
@@ -761,6 +762,17 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
                           if (ok) {
                             setState(() =>
                                 _orders.removeWhere((o) => o.id == order.id));
+                            // Enviar email de cancelación
+                            final cancelEmail = order.userEmail ?? '';
+                            if (cancelEmail.isNotEmpty) {
+                              BrevoService.sendOrderCancelledEmail(
+                                email: cancelEmail,
+                                orderNumber: order.orderNumber,
+                                customerName: cancelEmail.split('@').first,
+                                totalCents: order.totalCents,
+                                reason: selectedReason,
+                              );
+                            }
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
@@ -953,6 +965,17 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
                                 Navigator.pop(dialogCtx);
                                 Navigator.pop(ctx);
                                 if (ok) {
+                                  // Enviar email de devolución
+                                  if (email.isNotEmpty) {
+                                    BrevoService.sendRefundConfirmationEmail(
+                                      email: email,
+                                      orderNumber: order.orderNumber,
+                                      refundAmountCents: totalRefundCents,
+                                      reason: selectedReason,
+                                      items: selectedItems,
+                                      customerName: email.split('@').first,
+                                    );
+                                  }
                                   ScaffoldMessenger.of(context)
                                       .showSnackBar(
                                     SnackBar(
