@@ -8,6 +8,17 @@ import '../models/refund.dart';
 /// InvoiceService - Genera facturas PDF de pedidos
 /// Diseño replicado de la factura electrónica de la web JGMarket
 class InvoiceService {
+  /// Carga las fuentes que soportan el símbolo €
+  static Future<Map<String, pw.Font>> _loadFonts() async {
+    final regular = await PdfGoogleFonts.nunitoSansRegular();
+    final bold = await PdfGoogleFonts.nunitoSansBold();
+    return {'regular': regular, 'bold': bold};
+  }
+
+  /// Formatea precio con € correctamente
+  static String _formatPrice(int cents) {
+    return '${(cents / 100).toStringAsFixed(2)}\u20AC';
+  }
   /// Genera y abre el diálogo de compartir/descargar la factura
   static Future<void> shareInvoice(Order order) async {
     final pdf = await _buildInvoicePdf(order);
@@ -21,6 +32,9 @@ class InvoiceService {
 
   static Future<pw.Document> _buildInvoicePdf(Order order) async {
     final pdf = pw.Document();
+    final fonts = await _loadFonts();
+    final ttfRegular = fonts['regular']!;
+    final ttfBold = fonts['bold']!;
 
     // Calcular subtotal desde items
     final subtotal = order.items.fold<int>(
@@ -49,10 +63,15 @@ class InvoiceService {
     final textGray = PdfColor.fromHex('#64748b');
     final darkText = PdfColor.fromHex('#1a202c');
 
+    final pageTheme = pw.PageTheme(
+      pageFormat: PdfPageFormat.a4,
+      margin: pw.EdgeInsets.zero,
+      theme: pw.ThemeData.withFont(base: ttfRegular, bold: ttfBold),
+    );
+
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: pw.EdgeInsets.zero,
+        pageTheme: pageTheme,
         build: (context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
@@ -310,7 +329,7 @@ class InvoiceService {
                                   padding: const pw.EdgeInsets.symmetric(
                                       vertical: 12, horizontal: 8),
                                   child: pw.Text(
-                                    '€${(item.priceCents / 100).toStringAsFixed(2)}',
+                                    '\u20AC${(item.priceCents / 100).toStringAsFixed(2)}',
                                     style: pw.TextStyle(fontSize: 11, color: darkText),
                                     textAlign: pw.TextAlign.right,
                                   ),
@@ -319,7 +338,7 @@ class InvoiceService {
                                   padding: const pw.EdgeInsets.symmetric(
                                       vertical: 12, horizontal: 8),
                                   child: pw.Text(
-                                    '€${((item.priceCents * item.quantity) / 100).toStringAsFixed(2)}',
+                                    '\u20AC${((item.priceCents * item.quantity) / 100).toStringAsFixed(2)}',
                                     style: pw.TextStyle(fontSize: 11, color: darkText),
                                     textAlign: pw.TextAlign.right,
                                   ),
@@ -348,13 +367,13 @@ class InvoiceService {
                               children: [
                                 _totalRow(
                                   'Subtotal',
-                                  '€${(subtotal / 100).toStringAsFixed(2)}',
+                                  '\u20AC${(subtotal / 100).toStringAsFixed(2)}',
                                   textGray,
                                 ),
                                 if (order.shippingCents > 0)
                                   _totalRow(
                                     'Envío',
-                                    '€${(order.shippingCents / 100).toStringAsFixed(2)}',
+                                    '\u20AC${(order.shippingCents / 100).toStringAsFixed(2)}',
                                     textGray,
                                   ),
                                 if (order.discountCents != null &&
@@ -380,7 +399,7 @@ class InvoiceService {
                                       ),
                                     ),
                                     pw.Text(
-                                      '€${(order.totalCents / 100).toStringAsFixed(2)}',
+                                      '\u20AC${(order.totalCents / 100).toStringAsFixed(2)}',
                                       style: pw.TextStyle(
                                         fontWeight: pw.FontWeight.bold,
                                         fontSize: 18,
@@ -476,6 +495,9 @@ class InvoiceService {
 
   static Future<pw.Document> _buildInvoiceFromModelPdf(Invoice invoice) async {
     final pdf = pw.Document();
+    final fonts = await _loadFonts();
+    final ttfRegular = fonts['regular']!;
+    final ttfBold = fonts['bold']!;
 
     const months = [
       'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -493,10 +515,15 @@ class InvoiceService {
     final textGray = PdfColor.fromHex('#64748b');
     final darkText = PdfColor.fromHex('#1a202c');
 
+    final pageTheme = pw.PageTheme(
+      pageFormat: PdfPageFormat.a4,
+      margin: pw.EdgeInsets.zero,
+      theme: pw.ThemeData.withFont(base: ttfRegular, bold: ttfBold),
+    );
+
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: pw.EdgeInsets.zero,
+        pageTheme: pageTheme,
         build: (context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
@@ -648,11 +675,11 @@ class InvoiceService {
                               ),
                               pw.Padding(
                                 padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                                child: pw.Text('€${(priceCents / 100).toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 11, color: darkText), textAlign: pw.TextAlign.right),
+                                child: pw.Text('\u20AC${(priceCents / 100).toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 11, color: darkText), textAlign: pw.TextAlign.right),
                               ),
                               pw.Padding(
                                 padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                                child: pw.Text('€${((priceCents * qty) / 100).toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 11, color: darkText), textAlign: pw.TextAlign.right),
+                                child: pw.Text('\u20AC${((priceCents * qty) / 100).toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 11, color: darkText), textAlign: pw.TextAlign.right),
                               ),
                             ]);
                           }),
@@ -671,8 +698,8 @@ class InvoiceService {
                             child: pw.Column(
                               crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                               children: [
-                                _totalRow('Subtotal', '€${(invoice.subtotalCents / 100).toStringAsFixed(2)}', textGray),
-                                if (invoice.taxCents > 0) _totalRow('IVA', '€${(invoice.taxCents / 100).toStringAsFixed(2)}', textGray),
+                                _totalRow('Subtotal', '\u20AC${(invoice.subtotalCents / 100).toStringAsFixed(2)}', textGray),
+                                if (invoice.taxCents > 0) _totalRow('IVA', '\u20AC${(invoice.taxCents / 100).toStringAsFixed(2)}', textGray),
                                 pw.SizedBox(height: 8),
                                 pw.Divider(color: borderColor),
                                 pw.SizedBox(height: 8),
@@ -680,7 +707,7 @@ class InvoiceService {
                                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                                   children: [
                                     pw.Text('Total', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14, color: darkText)),
-                                    pw.Text('€${(invoice.totalCents / 100).toStringAsFixed(2)}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18, color: accentColor)),
+                                    pw.Text('\u20AC${(invoice.totalCents / 100).toStringAsFixed(2)}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18, color: accentColor)),
                                   ],
                                 ),
                               ],
@@ -723,6 +750,9 @@ class InvoiceService {
 
   static Future<pw.Document> _buildRefundPdf(Refund refund) async {
     final pdf = pw.Document();
+    final fonts = await _loadFonts();
+    final ttfRegular = fonts['regular']!;
+    final ttfBold = fonts['bold']!;
 
     const months = [
       'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -740,10 +770,15 @@ class InvoiceService {
 
     final refundNumber = 'DEV-${refund.createdAt.year}-${refund.id.substring(0, 5).toUpperCase()}';
 
+    final pageTheme = pw.PageTheme(
+      pageFormat: PdfPageFormat.a4,
+      margin: pw.EdgeInsets.zero,
+      theme: pw.ThemeData.withFont(base: ttfRegular, bold: ttfBold),
+    );
+
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: pw.EdgeInsets.zero,
+        pageTheme: pageTheme,
         build: (context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
@@ -893,7 +928,7 @@ class InvoiceService {
                               ),
                               pw.Padding(
                                 padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                                child: pw.Text('€${((priceCents * qty) / 100).toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 11, color: darkText), textAlign: pw.TextAlign.right),
+                                child: pw.Text('\u20AC${((priceCents * qty) / 100).toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 11, color: darkText), textAlign: pw.TextAlign.right),
                               ),
                             ]);
                           }),
@@ -920,7 +955,7 @@ class InvoiceService {
                                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                                   children: [
                                     pw.Text('Total Reembolso', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14, color: darkText)),
-                                    pw.Text('€${(refund.refundAmountCents / 100).toStringAsFixed(2)}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18, color: accentOrange)),
+                                    pw.Text('\u20AC${(refund.refundAmountCents / 100).toStringAsFixed(2)}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18, color: accentOrange)),
                                   ],
                                 ),
                               ],

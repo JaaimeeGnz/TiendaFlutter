@@ -49,7 +49,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         setState(() {});
@@ -130,6 +130,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
             Tab(icon: Icon(Icons.dashboard), text: 'Dashboard'),
             Tab(icon: Icon(Icons.inventory), text: 'Productos'),
             Tab(icon: Icon(Icons.receipt_long), text: 'Pedidos'),
+            Tab(icon: Icon(Icons.assignment_return), text: 'Devoluciones'),
             Tab(icon: Icon(Icons.bug_report), text: 'Reportes'),
             Tab(icon: Icon(Icons.description), text: 'Facturas'),
           ],
@@ -143,6 +144,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                 _buildDashboardTab(),
                 _buildProductsTab(),
                 _buildOrdersTab(),
+                _buildRefundsManagementTab(),
                 _buildReportsTab(),
                 _buildInvoicesTab(),
               ],
@@ -174,7 +176,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
             physics: const NeverScrollableScrollPhysics(),
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
-            childAspectRatio: 1.3,
+            childAspectRatio: 1.5,
             children: [
               _buildStatCard(
                 'Productos',
@@ -321,20 +323,27 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   ) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 4),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+              ),
             ),
             Text(
               title,
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -606,6 +615,288 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  /// Tab de Devoluciones — gestión completa como pedidos
+  Widget _buildRefundsManagementTab() {
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: _refunds.isEmpty
+          ? ListView(
+              children: const [
+                SizedBox(height: 100),
+                Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.assignment_return_outlined,
+                          size: 64, color: AppColors.mediumGray),
+                      SizedBox(height: 16),
+                      Text(
+                        'No hay devoluciones',
+                        style: TextStyle(
+                            fontSize: 16, color: AppColors.mediumGray),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _refunds.length,
+              itemBuilder: (context, index) {
+                final refund = _refunds[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: _getRefundStatusColor(refund.status),
+                      child: const Icon(Icons.assignment_return,
+                          color: Colors.white, size: 20),
+                    ),
+                    title: Text(
+                      'Devolución #${refund.id.length > 8 ? refund.id.substring(0, 8) : refund.id}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          refund.customerName.isNotEmpty
+                              ? '${refund.customerName} • ${refund.customerEmail}'
+                              : refund.customerEmail,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: _getRefundStatusColor(refund.status)
+                                    .withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                refund.statusText,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color:
+                                      _getRefundStatusColor(refund.status),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _formatDate(refund.createdAt),
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Motivo: ${refund.reason}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                    isThreeLine: true,
+                    trailing: PopupMenuButton<String>(
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'view',
+                          child: Row(
+                            children: [
+                              Icon(Icons.visibility),
+                              SizedBox(width: 8),
+                              Text('Ver detalles'),
+                            ],
+                          ),
+                        ),
+                        if (refund.status == 'pending') ...[
+                          const PopupMenuItem(
+                            value: 'processed',
+                            child: Row(
+                              children: [
+                                Icon(Icons.check_circle,
+                                    color: AppColors.success),
+                                SizedBox(width: 8),
+                                Text('Marcar como procesada'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'rejected',
+                            child: Row(
+                              children: [
+                                Icon(Icons.cancel, color: AppColors.error),
+                                SizedBox(width: 8),
+                                Text('Rechazar'),
+                              ],
+                            ),
+                          ),
+                        ],
+                        if (refund.status == 'approved')
+                          const PopupMenuItem(
+                            value: 'processed',
+                            child: Row(
+                              children: [
+                                Icon(Icons.check_circle,
+                                    color: AppColors.success),
+                                SizedBox(width: 8),
+                                Text('Marcar como procesada'),
+                              ],
+                            ),
+                          ),
+                        const PopupMenuItem(
+                          value: 'download',
+                          child: Row(
+                            children: [
+                              Icon(Icons.download, color: Colors.orange),
+                              SizedBox(width: 8),
+                              Text('Descargar PDF'),
+                            ],
+                          ),
+                        ),
+                      ],
+                      onSelected: (value) async {
+                        if (value == 'view') {
+                          _showRefundDetailDialog(refund);
+                        } else if (value == 'processed' ||
+                            value == 'rejected') {
+                          final success = await _invoiceAdminService
+                              .updateRefundStatus(refund.id, value!);
+                          if (success) {
+                            _loadData();
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Devolución ${value == 'processed' ? 'procesada' : 'rechazada'}'),
+                                  backgroundColor: value == 'processed'
+                                      ? AppColors.success
+                                      : AppColors.error,
+                                ),
+                              );
+                            }
+                          }
+                        } else if (value == 'download') {
+                          _downloadRefundPdf(refund);
+                        }
+                      },
+                    ),
+                    onTap: () => _showRefundDetailDialog(refund),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+
+  void _showRefundDetailDialog(Refund refund) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+            'Devolución #${refund.id.length > 8 ? refund.id.substring(0, 8) : refund.id}'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow('Cliente', refund.customerName.isNotEmpty
+                  ? refund.customerName
+                  : refund.customerEmail),
+              const SizedBox(height: 8),
+              _buildDetailRow('Email', refund.customerEmail),
+              const SizedBox(height: 8),
+              _buildDetailRow('Estado', refund.statusText),
+              const SizedBox(height: 8),
+              _buildDetailRow(
+                  'Importe',
+                  '${(refund.refundAmountCents / 100).toStringAsFixed(2)}\u20AC'),
+              const SizedBox(height: 8),
+              _buildDetailRow('Método', refund.refundMethod == 'original_payment'
+                  ? 'Pago original'
+                  : refund.refundMethod),
+              const SizedBox(height: 8),
+              _buildDetailRow('Fecha', _formatDate(refund.createdAt)),
+              const SizedBox(height: 16),
+              const Text(
+                'Motivo:',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, color: AppColors.mediumGray),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(refund.reason),
+              ),
+              if (refund.returnedItems.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Artículos devueltos:',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: AppColors.mediumGray),
+                ),
+                const SizedBox(height: 8),
+                ...refund.returnedItems.map((item) {
+                  final name = item['product_name'] as String? ??
+                      item['name'] as String? ??
+                      'Producto';
+                  final qty = (item['quantity'] as num?)?.toInt() ?? 1;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text('• $name (x$qty)'),
+                  );
+                }),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          if (refund.status == 'pending') ...[
+            TextButton.icon(
+              onPressed: () async {
+                await _invoiceAdminService.updateRefundStatus(
+                    refund.id, 'processed');
+                Navigator.pop(context);
+                _loadData();
+              },
+              icon: const Icon(Icons.check_circle, color: AppColors.success),
+              label: const Text('Procesar'),
+            ),
+            TextButton.icon(
+              onPressed: () async {
+                await _invoiceAdminService.updateRefundStatus(
+                    refund.id, 'rejected');
+                Navigator.pop(context);
+                _loadData();
+              },
+              icon: const Icon(Icons.cancel, color: AppColors.error),
+              label: const Text('Rechazar',
+                  style: TextStyle(color: AppColors.error)),
+            ),
+          ],
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Tab de Reportes de contacto
@@ -975,7 +1266,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
             physics: const NeverScrollableScrollPhysics(),
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 1.4,
+            childAspectRatio: 1.6,
             children: [
               _buildStatCard(
                 'Total Facturado',
@@ -1081,66 +1372,77 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   Widget _buildInvoiceCard(Invoice invoice) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: AppColors.jdTurquoise,
-          child: const Icon(
-            Icons.description,
-            color: Colors.white,
-            size: 20,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: AppColors.jdTurquoise,
+            child: const Icon(
+              Icons.description,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
-        ),
-        title: Text(
-          invoice.invoiceNumber,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(invoice.customerName.isNotEmpty
-                ? '${invoice.customerName} • ${invoice.customerEmail}'
-                : invoice.customerEmail),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: _getInvoiceStatusColor(invoice.status).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    invoice.statusDisplay,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: _getInvoiceStatusColor(invoice.status),
-                      fontWeight: FontWeight.bold,
+          title: Text(
+            invoice.invoiceNumber,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                invoice.customerName.isNotEmpty
+                    ? '${invoice.customerName} \u2022 ${invoice.customerEmail}'
+                    : invoice.customerEmail,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _getInvoiceStatusColor(invoice.status).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      invoice.statusDisplay,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _getInvoiceStatusColor(invoice.status),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _formatDate(invoice.issuedAt),
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ],
-        ),
-        isThreeLine: true,
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${(invoice.totalCents / 100).toStringAsFixed(2)}€',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.download, color: AppColors.jdTurquoise),
-              tooltip: 'Descargar PDF',
-              onPressed: () => _downloadInvoicePdf(invoice),
-            ),
-          ],
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      _formatDate(invoice.issuedAt),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          isThreeLine: true,
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${(invoice.totalCents / 100).toStringAsFixed(2)}\u20AC',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              const SizedBox(height: 4),
+              InkWell(
+                onTap: () => _downloadInvoicePdf(invoice),
+                child: const Icon(Icons.download, color: AppColors.jdTurquoise, size: 22),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1149,62 +1451,73 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   Widget _buildRefundCard(Refund refund) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: _getRefundStatusColor(refund.status),
-          child: const Icon(Icons.assignment_return, color: Colors.white, size: 20),
-        ),
-        title: Text(
-          'Devolución - ${refund.orderId.length > 8 ? refund.orderId.substring(0, 8) : refund.orderId}...',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(refund.customerName.isNotEmpty
-                ? '${refund.customerName} • ${refund.customerEmail}'
-                : refund.customerEmail),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: _getRefundStatusColor(refund.status).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    refund.statusText,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: _getRefundStatusColor(refund.status),
-                      fontWeight: FontWeight.bold,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: _getRefundStatusColor(refund.status),
+            child: const Icon(Icons.assignment_return, color: Colors.white, size: 20),
+          ),
+          title: Text(
+            'Devolución - ${refund.orderId.length > 8 ? refund.orderId.substring(0, 8) : refund.orderId}...',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                refund.customerName.isNotEmpty
+                    ? '${refund.customerName} \u2022 ${refund.customerEmail}'
+                    : refund.customerEmail,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _getRefundStatusColor(refund.status).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      refund.statusText,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _getRefundStatusColor(refund.status),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _formatDate(refund.createdAt),
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ],
-        ),
-        isThreeLine: true,
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${(refund.refundAmountCents / 100).toStringAsFixed(2)}€',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.download, color: Colors.orange),
-              tooltip: 'Descargar PDF',
-              onPressed: () => _downloadRefundPdf(refund),
-            ),
-          ],
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      _formatDate(refund.createdAt),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          isThreeLine: true,
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${(refund.refundAmountCents / 100).toStringAsFixed(2)}\u20AC',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              const SizedBox(height: 4),
+              InkWell(
+                onTap: () => _downloadRefundPdf(refund),
+                child: const Icon(Icons.download, color: Colors.orange, size: 22),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -38,6 +38,20 @@ class InvoiceAdminService {
     }
   }
 
+  /// Actualizar estado de una devolución (admin)
+  Future<bool> updateRefundStatus(String refundId, String newStatus) async {
+    try {
+      await _client
+          .from('refunds')
+          .update({'status': newStatus})
+          .eq('id', refundId);
+      return true;
+    } catch (e) {
+      print('Error updating refund status: $e');
+      return false;
+    }
+  }
+
   /// Resumen financiero — replica getFinancialSummary de Astro
   /// Usa el total de pedidos (no cancelados) como "Total Facturado"
   Future<Map<String, dynamic>> getFinancialSummary() async {

@@ -206,11 +206,23 @@ class _AdminProductEditScreenState extends State<AdminProductEditScreen> {
     try {
       // Subir nuevas imágenes a Cloudinary
       List<String> uploadedUrls = List.from(_imageUrls);
+      int failedUploads = 0;
       for (final image in _newImages) {
         final url = await _cloudinaryService.uploadImage(File(image.path));
         if (url != null) {
           uploadedUrls.add(url);
+        } else {
+          failedUploads++;
         }
+      }
+
+      if (failedUploads > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$failedUploads imagen(es) no se pudieron subir'),
+            backgroundColor: Colors.orange,
+          ),
+        );
       }
 
       final priceText = _priceController.text.replaceAll(',', '.');

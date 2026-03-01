@@ -1,38 +1,84 @@
-import 'package:cloudinary_public/cloudinary_public.dart';
 import 'dart:io';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../core/constants/app_config.dart';
 
+/// CloudinaryService - Subida de imágenes a Cloudinary
+/// Usa signed uploads con API Key + API Secret (como en tiendaOnline/Astro)
 class CloudinaryService {
-  late final CloudinaryPublic _cloudinary;
-
-  CloudinaryService() {
-    _cloudinary = CloudinaryPublic(
-      AppConfig.cloudinaryCloudName,
-      'fashionmarket', // Upload preset name
-      cache: false,
-    );
-  }
-
-  /// Sube una imagen a Cloudinary
-  /// [file] - Archivo de imagen a subir
-  /// [folder] - Carpeta en Cloudinary (por defecto: fashionmarket/products)
+  /// Sube una imagen a Cloudinary usando signed upload
+  /// Replica el enfoque de tiendaOnline: genera firma con api_secret
   Future<String?> uploadImage(
     File file, {
     String folder = 'fashionmarket/products',
   }) async {
     try {
-      final response = await _cloudinary.uploadFile(
-        CloudinaryFile.fromFile(
+      final cloudName = AppConfig.cloudinaryCloudName;
+      final apiKey = AppConfig.cloudinaryApiKey;
+      final apiSecret = AppConfig.cloudinaryApiSecret;
+
+      if (cloudName.isEmpty || apiKey.isEmpty || apiSecret.isEmpty) {
+        print('Error: Cloudinary credentials not configured in .env');
+        return null;
+      }
+
+      final timestamp = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
+
+      // Generar firma (como en tiendaOnline/src/pages/api/cloudinary-signature.ts)
+      final paramsToSign = 'folder=$folder&timestamp=$timestamp$apiSecret';
+      final signature = sha1.convert(utf8.encode(paramsToSign)).toString();
+
+      final url = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
+
+      final request = http.MultipartRequest('POST', url);
+      request.fields['api_key'] = apiKey;
+      request.fields['timestamp'] = timestamp;
+      request.fields['signature'] = signature;
+      request.fields['folder'] = folder;
+
+      // Determinar el tipo MIME
+      final extension = file.path.split('.').last.toLowerCase();
+      final mimeType = _getMimeType(extension);
+
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
           file.path,
-          folder: folder,
-          resourceType: CloudinaryResourceType.Image,
+          contentType: MediaType('image', mimeType),
         ),
       );
 
-      return response.secureUrl;
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(responseBody);
+        return jsonResponse['secure_url'] as String?;
+      } else {
+        print('Error uploading to Cloudinary: $responseBody');
+        return null;
+      }
     } catch (e) {
       print('Error uploading image to Cloudinary: $e');
       return null;
+    }
+  }
+
+  String _getMimeType(String extension) {
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        return 'jpeg';
+      case 'png':
+        return 'png';
+      case 'gif':
+        return 'gif';
+      case 'webp':
+        return 'webp';
+      default:
+        return 'jpeg';
     }
   }
 
@@ -53,22 +99,7 @@ class CloudinaryService {
     return urls;
   }
 
-  /// Elimina una imagen de Cloudinary
-  /// Nota: cloudinary_public no soporta eliminación directa
-  /// Se requiere API Admin para eliminar imágenes
-  /// [publicId] - ID público de la imagen en Cloudinary
-  Future<bool> deleteImage(String publicId) async {
-    // cloudinary_public no tiene método deleteFile
-    // La eliminación debe hacerse vía Admin API o desde el dashboard
-    print('Nota: La eliminación de imágenes requiere Cloudinary Admin API');
-    return false;
-  }
-
   /// Obtiene la URL optimizada de una imagen
-  /// [url] - URL original de la imagen
-  /// [width] - Ancho deseado
-  /// [height] - Alto deseado
-  /// [quality] - Calidad (0-100)
   static String getOptimizedUrl(
     String url, {
     int? width,

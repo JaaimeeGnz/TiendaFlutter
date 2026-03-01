@@ -74,6 +74,7 @@ class _NewsletterDialogState extends State<NewsletterDialog> {
 
   bool _isLoading = false;
   bool _isSuccess = false;
+  bool _isExpired = false;
   String? _error;
   String? _discountCode;
 
@@ -104,6 +105,7 @@ class _NewsletterDialogState extends State<NewsletterDialog> {
       if (result.success) {
         _isSuccess = true;
         _discountCode = result.discountCode;
+        _isExpired = result.isExpired;
       } else {
         _error = result.message;
       }
@@ -249,28 +251,34 @@ class _NewsletterDialogState extends State<NewsletterDialog> {
 
         // Código de descuento
         if (_discountCode != null) ...[
-          const Text('Tu código de descuento:', style: TextStyle(fontSize: 14)),
+          Text(
+            _isExpired ? 'Tu código de descuento ha expirado:' : 'Tu código de descuento:',
+            style: const TextStyle(fontSize: 14),
+          ),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             decoration: BoxDecoration(
-              color: AppColors.jdBlack,
+              color: _isExpired ? Colors.grey[600] : AppColors.jdBlack,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               _discountCode!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
                 letterSpacing: 2,
+                decoration: _isExpired ? TextDecoration.lineThrough : null,
               ),
             ),
           ),
           const SizedBox(height: 16),
           Text(
-            'Úsalo en tu próxima compra para obtener un 10% de descuento.',
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            _isExpired
+                ? 'Este código ya no es válido. Suscríbete con otro email para obtener un nuevo descuento.'
+                : 'Úsalo en tu próxima compra para obtener un 10% de descuento.',
+            style: TextStyle(fontSize: 14, color: _isExpired ? AppColors.error : Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
         ],

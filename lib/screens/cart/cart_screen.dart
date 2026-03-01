@@ -80,21 +80,20 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    // Si el usuario está autenticado, cargar direcciones antes de continuar
+    // Si el usuario está autenticado, mostrar selector de direcciones
     if (authProvider.isAuthenticated && authProvider.user != null) {
       // Cargar direcciones si aún no se han cargado
-      if (addressProvider.addresses.isEmpty && !addressProvider.isLoading) {
+      if (!addressProvider.isLoading) {
         await addressProvider.loadAddresses(authProvider.user!.id);
       }
 
-      // Si tiene direcciones, mostrar selector
-      if (addressProvider.isNotEmpty) {
-        _showAddressSelectionDialog(addressProvider, cartProvider, authProvider);
-        return;
-      }
+      // Siempre mostrar selector de dirección (con opción de añadir nueva)
+      if (!mounted) return;
+      _showAddressSelectionDialog(addressProvider, cartProvider, authProvider);
+      return;
     }
 
-    // Si no hay dirección o es invitado, proceder directamente
+    // Si es invitado, proceder directamente
     await _executeCheckout(cartProvider, authProvider, null);
   }
 
@@ -128,6 +127,27 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+                if (addressProvider.addresses.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Column(
+                      children: [
+                        Icon(Icons.location_off, size: 48, color: Colors.grey[400]),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No tienes direcciones guardadas',
+                          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Añade una dirección para continuar con tu pedido',
+                          style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  )
+                else
                 ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),

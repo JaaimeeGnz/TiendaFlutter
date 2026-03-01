@@ -24,8 +24,9 @@ dependencies:
   # Supabase
   supabase_flutter: ^2.0.0
   
-  # Cloudinary
-  cloudinary_public: ^0.21.0
+  # Cloudinary (signed uploads like Astro)
+  crypto: ^3.0.3
+  http_parser: ^4.0.2
   
   # Stripe
   flutter_stripe: ^10.1.1

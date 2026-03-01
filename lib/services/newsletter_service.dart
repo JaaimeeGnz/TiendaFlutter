@@ -77,9 +77,54 @@ class NewsletterService {
               .maybeSingle();
 
           if (existing != null) {
+            final code = existing['discount_code'] as String;
+            // Verificar si el código sigue siendo válido
+            final codeData = await _client
+                .from('discount_codes')
+                .select('valid_until, is_active, times_used, max_uses')
+                .eq('code', code)
+                .maybeSingle();
+
+            if (codeData != null) {
+              final validUntil = codeData['valid_until'] != null
+                  ? DateTime.parse(codeData['valid_until'] as String)
+                  : null;
+              final isActive = codeData['is_active'] as bool? ?? true;
+              final timesUsed = (codeData['times_used'] as num?)?.toInt() ?? 0;
+              final maxUses = (codeData['max_uses'] as num?)?.toInt();
+
+              if (!isActive || (maxUses != null && timesUsed >= maxUses)) {
+                return NewsletterResult.success(
+                  message: 'Ya estabas suscrito. Tu código $code ya ha sido utilizado.',
+                  discountCode: code,
+                  discountPercentage: discountPercentage,
+                  isExpired: true,
+                );
+              }
+              if (validUntil != null && DateTime.now().isAfter(validUntil)) {
+                return NewsletterResult.success(
+                  message: 'Ya estabas suscrito. Tu código $code ha expirado.',
+                  discountCode: code,
+                  discountPercentage: discountPercentage,
+                  isExpired: true,
+                );
+              }
+              // Código aún válido - calcular días restantes
+              final daysLeft = validUntil != null
+                  ? validUntil.difference(DateTime.now()).inDays
+                  : null;
+              final daysMsg = daysLeft != null ? ' Válido por $daysLeft días más.' : '';
+              return NewsletterResult.success(
+                message: 'Ya estabas suscrito a nuestra newsletter.$daysMsg',
+                discountCode: code,
+                discountPercentage: discountPercentage,
+                isExpired: false,
+              );
+            }
+
             return NewsletterResult.success(
               message: 'Ya estabas suscrito a nuestra newsletter',
-              discountCode: existing['discount_code'] as String,
+              discountCode: code,
               discountPercentage: discountPercentage,
             );
           }
@@ -171,24 +216,28 @@ class NewsletterResult {
   final String message;
   final String? discountCode;
   final int? discountPercentage;
+  final bool isExpired;
 
   NewsletterResult._({
     required this.success,
     required this.message,
     this.discountCode,
     this.discountPercentage,
+    this.isExpired = false,
   });
 
   factory NewsletterResult.success({
     required String message,
     String? discountCode,
     int? discountPercentage,
+    bool isExpired = false,
   }) {
     return NewsletterResult._(
       success: true,
       message: message,
       discountCode: discountCode,
       discountPercentage: discountPercentage,
+      isExpired: isExpired,
     );
   }
 
