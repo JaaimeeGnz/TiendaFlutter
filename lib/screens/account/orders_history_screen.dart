@@ -1035,12 +1035,16 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Productos del pedido',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            Flexible(
+              child: Text('Productos del pedido',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  overflow: TextOverflow.ellipsis),
+            ),
+            const SizedBox(width: 8),
             GestureDetector(
               onTap: onToggleAll,
               child: Text(
-                allSelected ? 'Deseleccionar todos' : 'Seleccionar todos',
+                allSelected ? 'Deseleccionar' : 'Seleccionar todos',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
